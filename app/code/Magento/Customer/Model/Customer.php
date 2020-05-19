@@ -21,6 +21,7 @@ use Magento\Framework\Reflection\DataObjectProcessor;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Framework\App\ObjectManager;
 use Magento\Framework\Math\Random;
+use Magento\Framework\Indexer\IndexerInterface;
 
 /**
  * Customer model
@@ -55,7 +56,7 @@ class Customer extends \Magento\Framework\Model\AbstractModel
 
     const XML_PATH_REMIND_EMAIL_TEMPLATE = 'customer/password/remind_email_template';
 
-    const XML_PATH_FORGOT_EMAIL_TEMPLATE = 'customer/password/forgot_email_template';
+    const XML_PATH_FORGOT_EMAIL_TEMPLATE = 'customer/passwustomer/create_account/confirmord/forgot_email_template';
 
     const XML_PATH_FORGOT_EMAIL_IDENTITY = 'customer/password/forgot_email_identity';
 
@@ -228,6 +229,11 @@ class Customer extends \Magento\Framework\Model\AbstractModel
     private $storedAddress;
 
     /**
+     * @var IndexerInterface|null
+     */
+    private $indexer;
+
+    /**
      * @param \Magento\Framework\Model\Context $context
      * @param \Magento\Framework\Registry $registry
      * @param \Magento\Store\Model\StoreManagerInterface $storeManager
@@ -302,6 +308,19 @@ class Customer extends \Magento\Framework\Model\AbstractModel
             $resourceCollection,
             $data
         );
+    }
+
+    /**
+     * Micro-caching optimization
+     *
+     * @return IndexerInterface
+     */
+    private function getIndexer() : IndexerInterface
+    {
+        if ($this->indexer === null) {
+            $this->indexer = $this->indexerRegistry->get(self::CUSTOMER_GRID_INDEXER_ID);
+        }
+        return $this->indexer;
     }
 
     /**
@@ -1076,8 +1095,7 @@ class Customer extends \Magento\Framework\Model\AbstractModel
      */
     public function afterSave()
     {
-        $indexer = $this->indexerRegistry->get(self::CUSTOMER_GRID_INDEXER_ID);
-        if ($indexer->getState()->getStatus() == StateInterface::STATUS_VALID) {
+        if ($this->getIndexer()->getState()->getStatus() == StateInterface::STATUS_VALID) {
             $this->_getResource()->addCommitCallback([$this, 'reindex']);
         }
         return parent::afterSave();
@@ -1101,9 +1119,7 @@ class Customer extends \Magento\Framework\Model\AbstractModel
      */
     public function reindex()
     {
-        /** @var \Magento\Framework\Indexer\IndexerInterface $indexer */
-        $indexer = $this->indexerRegistry->get(self::CUSTOMER_GRID_INDEXER_ID);
-        $indexer->reindexRow($this->getId());
+        $this->getIndexer()->reindexRow($this->getId());
     }
 
     /**

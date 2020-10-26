@@ -110,6 +110,13 @@ class Bootstrap
     private $factory;
 
     /**
+     * Application Object
+     *
+     * @var ObjectManagerFactory
+     */
+    private $app;
+
+    /**
      * Static method so that client code does not have to create Object Manager Factory every time Bootstrap is called
      *
      * @param string $rootDir
@@ -236,6 +243,7 @@ class Bootstrap
             if (!($application instanceof AppInterface)) {
                 throw new \InvalidArgumentException("The provided class doesn't implement AppInterface: {$type}");
             }
+            $this->app = $application;
             return $application;
         } catch (\Exception $e) {
             $this->terminate($e);
@@ -441,6 +449,7 @@ class Bootstrap
             }
             echo $message;
         }
+        $this->app->handleTerminateError();
         exit(1);
     }
     // phpcs:enable
